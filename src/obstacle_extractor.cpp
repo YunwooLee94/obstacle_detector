@@ -95,7 +95,7 @@ bool ObstacleExtractor::updateParams(std_srvs::Empty::Request &req, std_srvs::Em
   nh_local_.param<double>("max_merge_separation", p_max_merge_separation_, 0.2);
   nh_local_.param<double>("max_merge_spread", p_max_merge_spread_, 0.2);
   nh_local_.param<double>("max_circle_radius", p_max_circle_radius_, 0.6);
-  nh_local_.param<double>("radius_enlargement", p_radius_enlargement_, 0.25);
+  nh_local_.param<double>("radius_enlargement", p_radius_enlargement_, 0.0);
 
   nh_local_.param<double>("min_x_limit", p_min_x_limit_, -10.0);
   nh_local_.param<double>("max_x_limit", p_max_x_limit_,  10.0);
@@ -109,9 +109,17 @@ bool ObstacleExtractor::updateParams(std_srvs::Empty::Request &req, std_srvs::Em
       if (p_use_scan_)
         scan_sub_ = nh_.subscribe("scan", 10, &ObstacleExtractor::scanCallback, this);
       else if (p_use_pcl_)
-        pcl_sub_ = nh_.subscribe("pcl", 10, &ObstacleExtractor::pclCallback, this);
-
+        pcl_sub_ = nh_.subscribe("/airsim_node/Drone1/lidar/LidarCustom", 10, &ObstacleExtractor::pclCallback, this);
+	    if(p_frame_id_ =="world_enu")
+        {
+            odom_sub_ = nh_.subscribe("/airsim_node/Drone1/local_goal_enu",10,&ObstacleExtractor::odomCallback,this);
+        }
+        else
+        {
+            odom_sub_ =nh_.subscribe("/airsim_node/Drone1/local_goal_ned",10,&ObstacleExtractor::odomCallback,this);
+        }
       obstacles_pub_ = nh_.advertise<obstacle_detector::Obstacles>("raw_obstacles", 10);
+      obstacles_vis_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("refined_obstcles",10);
     }
     else {
       // Send empty message
@@ -145,14 +153,24 @@ void ObstacleExtractor::scanCallback(const sensor_msgs::LaserScan::ConstPtr scan
   processPoints();
 }
 
-void ObstacleExtractor::pclCallback(const sensor_msgs::PointCloud::ConstPtr pcl_msg) {
-  base_frame_id_ = pcl_msg->header.frame_id;
-  stamp_ = pcl_msg->header.stamp;
+void ObstacleExtractor::pclCallback(const sensor_msgs::PointCloud2::ConstPtr pcl_msg) {
+    if(!pcl_msg->fields.empty())
+    {
+        base_frame_id_ = pcl_msg->header.frame_id;
+        stamp_ = pcl_msg->header.stamp;
+        sensor_msgs::PointCloud pcl_msg_;
+        sensor_msgs::convertPointCloud2ToPointCloud(*pcl_msg,pcl_msg_);
+        for (const geometry_msgs::Point32& point : pcl_msg_.points)
+            input_points_.push_back(Point(point.x, point.y));
 
-  for (const geometry_msgs::Point32& point : pcl_msg->points)
-    input_points_.push_back(Point(point.x, point.y));
+        processPoints();
+    }
 
-  processPoints();
+}
+
+void ObstacleExtractor::odomCallback(const nav_msgs::Odometry odom_msg)
+{
+    current_goal_ = odom_msg;
 }
 
 void ObstacleExtractor::processPoints() {
@@ -407,29 +425,29 @@ void ObstacleExtractor::publishObstacles() {
   obstacles_msg->header.stamp = stamp_;
 
   if (p_transform_coordinates_) {
-    tf::StampedTransform transform;
-
-    try {
-      tf_listener_.waitForTransform(p_frame_id_, base_frame_id_, stamp_, ros::Duration(0.1));
-      tf_listener_.lookupTransform(p_frame_id_, base_frame_id_, stamp_, transform);
-    }
-    catch (tf::TransformException& ex) {
-      ROS_INFO_STREAM(ex.what());
-      return;
-    }
-
-    for (Segment& s : segments_) {
-      s.first_point = transformPoint(s.first_point, transform);
-      s.last_point = transformPoint(s.last_point, transform);
-    }
-
-    for (Circle& c : circles_)
-      c.center = transformPoint(c.center, transform);
-
+//    tf::StampedTransform transform;
+//
+//    try {
+//      tf_listener_.waitForTransform(p_frame_id_, base_frame_id_, stamp_, ros::Duration(0.1));
+//      tf_listener_.lookupTransform(p_frame_id_, base_frame_id_, stamp_, transform);
+//    }
+//    catch (tf::TransformException& ex) {
+//     ROS_INFO_STREAM(ex.what());
+//      return;
+//    }
+//
+//    for (Segment& s : segments_) {
+//     s.first_point = transformPoint(s.first_point, transform);
+//      s.last_point = transformPoint(s.last_point, transform);
+//    }
+//
+//    for (Circle& c : circles_)
+//     c.center = transformPoint(c.center, transform);
+//
     obstacles_msg->header.frame_id = p_frame_id_;
   }
   else
-    obstacles_msg->header.frame_id = base_frame_id_;
+    obstacles_msg->header.frame_id = p_frame_id_;
 
 
   for (const Segment& s : segments_) {
@@ -442,22 +460,45 @@ void ObstacleExtractor::publishObstacles() {
 
     obstacles_msg->segments.push_back(segment);
   }
+  obstacles_vis_array.markers.clear();
 
+  count_id = 0;
   for (const Circle& c : circles_) {
     if (c.center.x > p_min_x_limit_ && c.center.x < p_max_x_limit_ &&
         c.center.y > p_min_y_limit_ && c.center.y < p_max_y_limit_) {
-        CircleObstacle circle;
+	marker_vis.header.frame_id = p_frame_id_;
+	marker_vis.id = count_id;
+	count_id++;
+	marker_vis.type = visualization_msgs::Marker::SPHERE;
+	marker_vis.action = visualization_msgs::Marker::ADD;
+	marker_vis.pose.position.x = c.center.y; // ned-enu lidar information
+	marker_vis.pose.position.y = c.center.x; // ned-enu lidar information
+	marker_vis.pose.position.z = current_goal_.pose.pose.position.z;
+	marker_vis.pose.orientation.x = 0.0;
+	marker_vis.pose.orientation.y = 0.0;
+	marker_vis.pose.orientation.z = 0.0;
+	marker_vis.pose.orientation.w = 1.0;
+	marker_vis.color.a = 0.5;
+	marker_vis.color.r = 1.0;
+	marker_vis.color.g = 0.0;
+	marker_vis.color.b = 0.0;
+	marker_vis.scale.x = 2*c.radius;
+	marker_vis.scale.y = 2*c.radius;
+	marker_vis.scale.z = 0.1;
+	obstacles_vis_array.markers.emplace_back(marker_vis);
 
-        circle.center.x = c.center.x;
-        circle.center.y = c.center.y;
-        circle.velocity.x = 0.0;
-        circle.velocity.y = 0.0;
-        circle.radius = c.radius;
-        circle.true_radius = c.radius - p_radius_enlargement_;
-
-        obstacles_msg->circles.push_back(circle);
+//	CircleObstacle circle;
+//        circle.center.x = c.center.x;
+//        circle.center.y = c.center.y;
+//	circle.center.z = -5.0;
+//        circle.velocity.x = 0.0;
+//        circle.velocity.y = 0.0;
+//        circle.radius = c.radius;
+//        circle.true_radius = c.radius - p_radius_enlargement_;
+//        obstacles_msg->circles.push_back(circle);
     }
   }
 
-  obstacles_pub_.publish(obstacles_msg);
+//  obstacles_pub_.publish(obstacles_msg);
+  obstacles_vis_pub_.publish(obstacles_vis_array);
 }

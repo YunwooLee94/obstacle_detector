@@ -113,6 +113,7 @@ bool ObstaclePublisher::updateParams(std_srvs::Empty::Request& req, std_srvs::Em
     CircleObstacle circle;
     circle.center.x = p_x_vector_[idx];
     circle.center.y = p_y_vector_[idx];
+    circle.center.z = 5.0;
     circle.radius = p_r_vector_[idx];
     circle.true_radius = p_r_vector_[idx] - p_radius_margin_;;
 
@@ -146,6 +147,7 @@ void ObstaclePublisher::calculateObstaclesPositions(double dt) {
   for (auto& circ : obstacles_.circles) {
     circ.center.x += circ.velocity.x * dt;
     circ.center.y += circ.velocity.y * dt;
+    circ.center.z = 5.0;
   }
 }
 
@@ -157,10 +159,12 @@ void ObstaclePublisher::fusionExample(double t) {
   if (t < 5.0) {
     circ1.center.x = -1.20 + 0.2 * t;
     circ1.center.y = 0.0;
+    circ1.center.z = 5.0;
     circ1.radius = 0.20;
 
     circ2.center.x = 1.20 - 0.2 * t;
     circ2.center.y = 0.0;
+    circ2.center.z = 5.0;
     circ2.radius = 0.20;
 
     obstacles_.circles.push_back(circ1);
@@ -169,6 +173,7 @@ void ObstaclePublisher::fusionExample(double t) {
   else if (t < 15.0) {
     circ1.center.x = 0.0;
     circ1.center.y = 0.0;
+    circ1.center.z = 5.0;
     circ1.radius = 0.20 + 0.20 * exp(-(t - 5.0) / 1.0);
 
     obstacles_.circles.push_back(circ1);
@@ -188,13 +193,14 @@ void ObstaclePublisher::fissionExample(double t) {
   if (t < 5.0) {
     circ1.center.x = 0.0;
     circ1.center.y = 0.0;
+    circ1.center.z = 5.0;
     circ1.radius = 0.20;
-
     obstacles_.circles.push_back(circ1);
   }
   else if (t < 6.0) {
     circ1.center.x = 0.0;
     circ1.center.y = 0.0;
+    circ1.center.z = 5.0;
     circ1.radius = 0.20 + 0.20 * (1.0 - exp(-(t - 5.0) / 1.0));
 
     obstacles_.circles.push_back(circ1);
@@ -202,10 +208,12 @@ void ObstaclePublisher::fissionExample(double t) {
   else if (t < 16.0){
     circ1.center.x = -0.20 - 0.2 * (t - 6.0);
     circ1.center.y = 0.0;
+    circ1.center.z = 5.0;
     circ1.radius = 0.20;
 
     circ2.center.x = 0.20 + 0.2 * (t - 6.0);
     circ2.center.y = 0.0;
+    circ2.center.z = 5.0;
     circ2.radius = 0.20;
 
     obstacles_.circles.push_back(circ1);

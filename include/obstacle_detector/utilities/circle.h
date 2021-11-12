@@ -55,7 +55,7 @@ public:
     center = (s.first_point + s.last_point - radius * s.normal()) / 2.0;
     point_sets = s.point_sets;
   }
-
+ //Class Constructor with Circle (p1, p2), Circle(p1,p2,p3)
   double distanceTo(const Point& p) { return (p - center).length() - radius; }
 
   friend std::ostream& operator<<(std::ostream& out, const Circle& c)

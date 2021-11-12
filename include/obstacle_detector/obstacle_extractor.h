@@ -39,13 +39,18 @@
 #include <tf/transform_listener.h>
 #include <std_srvs/Empty.h>
 #include <sensor_msgs/LaserScan.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/PointCloud.h>
+#include <sensor_msgs/point_cloud_conversion.h>
 #include <obstacle_detector/Obstacles.h>
-
+#include <nav_msgs/Odometry.h>
 #include "obstacle_detector/utilities/point.h"
 #include "obstacle_detector/utilities/segment.h"
 #include "obstacle_detector/utilities/circle.h"
 #include "obstacle_detector/utilities/point_set.h"
+
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 namespace obstacle_detector
 {
@@ -59,7 +64,8 @@ public:
 private:
   bool updateParams(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
   void scanCallback(const sensor_msgs::LaserScan::ConstPtr scan_msg);
-  void pclCallback(const sensor_msgs::PointCloud::ConstPtr pcl_msg);
+  void pclCallback(const sensor_msgs::PointCloud2::ConstPtr pcl_msg);
+  void odomCallback(const nav_msgs::Odometry odom_msg);
 
   void initialize() { std_srvs::Empty empt; updateParams(empt.request, empt.response); }
 
@@ -82,7 +88,10 @@ private:
 
   ros::Subscriber scan_sub_;
   ros::Subscriber pcl_sub_;
+  ros::Subscriber odom_sub_;
+
   ros::Publisher obstacles_pub_;
+  ros::Publisher obstacles_vis_pub_;
   ros::ServiceServer params_srv_;
 
   ros::Time stamp_;
@@ -92,6 +101,8 @@ private:
   std::list<Point> input_points_;
   std::list<Segment> segments_;
   std::list<Circle> circles_;
+
+  nav_msgs::Odometry current_goal_;
 
   // Parameters
   bool p_active_;
@@ -117,6 +128,9 @@ private:
   double p_max_x_limit_;
   double p_min_y_limit_;
   double p_max_y_limit_;
+  int count_id = 0;
+  visualization_msgs::MarkerArray obstacles_vis_array;
+  visualization_msgs::Marker marker_vis;
 
   std::string p_frame_id_;
 };
