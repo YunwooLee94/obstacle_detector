@@ -487,18 +487,18 @@ void ObstacleExtractor::publishObstacles() {
 	marker_vis.scale.z = 0.1;
 	obstacles_vis_array.markers.emplace_back(marker_vis);
 
-//	CircleObstacle circle;
-//        circle.center.x = c.center.x;
-//        circle.center.y = c.center.y;
-//	circle.center.z = -5.0;
-//        circle.velocity.x = 0.0;
-//        circle.velocity.y = 0.0;
-//        circle.radius = c.radius;
-//        circle.true_radius = c.radius - p_radius_enlargement_;
-//        obstacles_msg->circles.push_back(circle);
+	CircleObstacle circle;
+        circle.center.x = c.center.y; //ned-enu lidar information
+        circle.center.y = c.center.x; //ned-enu lidar information
+	circle.center.z = -5.0;
+        circle.velocity.x = 0.0;
+        circle.velocity.y = 0.0;
+        circle.radius = c.radius;
+        circle.true_radius = c.radius - p_radius_enlargement_;
+        obstacles_msg->circles.push_back(circle);
     }
   }
 
-//  obstacles_pub_.publish(obstacles_msg);
+  obstacles_pub_.publish(obstacles_msg);
   obstacles_vis_pub_.publish(obstacles_vis_array);
 }
