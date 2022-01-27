@@ -30,6 +30,7 @@
     <param name="max_y_limit"   value="80"/>
 
     <param name="frame_id"             value="world_enu"/>
+    <remap from="/airsim_node/Drone1/lidar/LidarCustom" to="/airsim_node/pointcloudTF"/>
   </node>
 
 </launch>

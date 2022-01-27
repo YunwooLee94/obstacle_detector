@@ -461,44 +461,86 @@ void ObstacleExtractor::publishObstacles() {
     obstacles_msg->segments.push_back(segment);
   }
   obstacles_vis_array.markers.clear();
+  if(p_frame_id_=="world_enu")
+  {
+      count_id = 0;
+      for (const Circle& c : circles_) {
+          if (c.center.x > p_min_x_limit_ && c.center.x < p_max_x_limit_ &&
+              c.center.y > p_min_y_limit_ && c.center.y < p_max_y_limit_) {
+              marker_vis.header.frame_id = p_frame_id_;
+              marker_vis.id = count_id;
+              count_id++;
+              marker_vis.type = visualization_msgs::Marker::SPHERE;
+              marker_vis.action = visualization_msgs::Marker::ADD;
+              marker_vis.pose.position.x = c.center.y; // ned-enu lidar information
+              marker_vis.pose.position.y = c.center.x; // ned-enu lidar information
+              marker_vis.pose.position.z = current_goal_.pose.pose.position.z;
+              marker_vis.pose.orientation.x = 0.0;
+              marker_vis.pose.orientation.y = 0.0;
+              marker_vis.pose.orientation.z = 0.0;
+              marker_vis.pose.orientation.w = 1.0;
+              marker_vis.color.a = 0.5;
+              marker_vis.color.r = 1.0;
+              marker_vis.color.g = 0.0;
+              marker_vis.color.b = 0.0;
+              marker_vis.scale.x = 2*c.radius;
+              marker_vis.scale.y = 2*c.radius;
+              marker_vis.scale.z = 0.1;
+              obstacles_vis_array.markers.emplace_back(marker_vis);
 
-  count_id = 0;
-  for (const Circle& c : circles_) {
-    if (c.center.x > p_min_x_limit_ && c.center.x < p_max_x_limit_ &&
-        c.center.y > p_min_y_limit_ && c.center.y < p_max_y_limit_) {
-	marker_vis.header.frame_id = p_frame_id_;
-	marker_vis.id = count_id;
-	count_id++;
-	marker_vis.type = visualization_msgs::Marker::SPHERE;
-	marker_vis.action = visualization_msgs::Marker::ADD;
-	marker_vis.pose.position.x = c.center.y; // ned-enu lidar information
-	marker_vis.pose.position.y = c.center.x; // ned-enu lidar information
-	marker_vis.pose.position.z = current_goal_.pose.pose.position.z;
-	marker_vis.pose.orientation.x = 0.0;
-	marker_vis.pose.orientation.y = 0.0;
-	marker_vis.pose.orientation.z = 0.0;
-	marker_vis.pose.orientation.w = 1.0;
-	marker_vis.color.a = 0.5;
-	marker_vis.color.r = 1.0;
-	marker_vis.color.g = 0.0;
-	marker_vis.color.b = 0.0;
-	marker_vis.scale.x = 2*c.radius;
-	marker_vis.scale.y = 2*c.radius;
-	marker_vis.scale.z = 0.1;
-	obstacles_vis_array.markers.emplace_back(marker_vis);
+              CircleObstacle circle;
+              circle.center.x = c.center.y;
+              circle.center.y = c.center.x;
+              circle.center.z = -5.0;
+              circle.velocity.x = 0.0;
+              circle.velocity.y = 0.0;
+              circle.radius = c.radius;
+              circle.true_radius = c.radius - p_radius_enlargement_;
+              obstacles_msg->circles.push_back(circle);
+          }
+      }
+  }
+  if(p_frame_id_=="world_ned")
+  {
+      count_id = 0;
+      for (const Circle& c : circles_) {
+          if (c.center.x > p_min_x_limit_ && c.center.x < p_max_x_limit_ &&
+              c.center.y > p_min_y_limit_ && c.center.y < p_max_y_limit_) {
+              marker_vis.header.frame_id = p_frame_id_;
+              marker_vis.id = count_id;
+              count_id++;
+              marker_vis.type = visualization_msgs::Marker::SPHERE;
+              marker_vis.action = visualization_msgs::Marker::ADD;
+              marker_vis.pose.position.x = c.center.x; // ned-enu lidar information
+              marker_vis.pose.position.y = c.center.y; // ned-enu lidar information
+              marker_vis.pose.position.z = current_goal_.pose.pose.position.z;
+              marker_vis.pose.orientation.x = 0.0;
+              marker_vis.pose.orientation.y = 0.0;
+              marker_vis.pose.orientation.z = 0.0;
+              marker_vis.pose.orientation.w = 1.0;
+              marker_vis.color.a = 0.5;
+              marker_vis.color.r = 1.0;
+              marker_vis.color.g = 0.0;
+              marker_vis.color.b = 0.0;
+              marker_vis.scale.x = 2*c.radius;
+              marker_vis.scale.y = 2*c.radius;
+              marker_vis.scale.z = 0.1;
+              obstacles_vis_array.markers.emplace_back(marker_vis);
 
-//	CircleObstacle circle;
-//        circle.center.x = c.center.x;
-//        circle.center.y = c.center.y;
-//	circle.center.z = -5.0;
-//        circle.velocity.x = 0.0;
-//        circle.velocity.y = 0.0;
-//        circle.radius = c.radius;
-//        circle.true_radius = c.radius - p_radius_enlargement_;
-//        obstacles_msg->circles.push_back(circle);
-    }
+              CircleObstacle circle;
+              circle.center.x = c.center.x;
+              circle.center.y = c.center.y;
+              circle.center.z = 0.0;
+              circle.velocity.x = 0.0;
+              circle.velocity.y = 0.0;
+              circle.radius = c.radius;
+              circle.true_radius = c.radius - p_radius_enlargement_;
+              obstacles_msg->circles.push_back(circle);
+          }
+      }
   }
 
-//  obstacles_pub_.publish(obstacles_msg);
+
+  obstacles_pub_.publish(obstacles_msg);
   obstacles_vis_pub_.publish(obstacles_vis_array);
 }
